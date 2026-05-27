@@ -29,13 +29,12 @@ class XHSParser(BaseParser):
         result = await xhs.extract(raw_url)
 
         desc = self.hashtag_handler(result.desc)
-        parse_result: VideoParseResult | ImageParseResult | MultimediaParseResult
         match result.type:
             case XHSPostType.VIDEO:
                 if not result.media:
                     raise ParseError("未获取到视频")
                 v: XHSMedia = result.media[0]
-                parse_result = VideoParseResult(
+                return VideoParseResult(
                     video=VideoRef(
                         url=v.url, thumb_url=v.thumb_url, duration=v.duration, height=v.height, width=v.width
                     ),
@@ -58,16 +57,14 @@ class XHSParser(BaseParser):
                         photos.append(
                             ImageRef(url=i.url, ext=ext, thumb_url=i.thumb_url, width=i.width, height=i.height)
                         )
-                parse_result = ImageParseResult(
+
+                return ImageParseResult(
                     photo=photos,
                     title=result.title,
                     content=desc,
                 )
             case _:
                 raise ParseError("不支持的类型")
-        parse_result.author = result.author
-        parse_result.author_handle = result.author_handle
-        return parse_result
 
     async def get_ext_by_url(self, url: str) -> str:
         async with httpx.AsyncClient(proxy=self.proxy) as client:

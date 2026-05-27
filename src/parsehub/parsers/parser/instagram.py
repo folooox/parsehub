@@ -24,18 +24,14 @@ class InstagramParser(BaseParser):
         post = await self._parse(raw_url, shortcode)
 
         try:
-            owner_handle: str | None = getattr(post, "owner_username", None) or None
-        except Exception:
-            owner_handle = None
-
-        try:
             dimensions: dict = post._field("dimensions")
         except KeyError:
             dimensions = {}
         width, height = dimensions.get("width", 0) or 0, dimensions.get("height", 0) or 0
 
-        result: VideoParseResult | ImageParseResult | MultimediaParseResult
-        match post.typename:
+        # Instagram now returns "XDT"-prefixed typenames for newer posts
+        typename = post.typename.removeprefix("XDT")
+        match typename:
             case "GraphSidecar":
                 media = [
                     VideoRef(url=i.video_url, thumb_url=i.display_url, width=i.width, height=i.height)
@@ -43,13 +39,13 @@ class InstagramParser(BaseParser):
                     else ImageRef(url=i.display_url, width=i.width, height=i.height)
                     for i in post.get_sidecar_nodes()
                 ]
-                result = MultimediaParseResult(media=media, title=post.title, content=post.caption)
+                return MultimediaParseResult(media=media, title=post.title, content=post.caption)
             case "GraphImage":
-                result = ImageParseResult(
+                return ImageParseResult(
                     photo=[ImageRef(url=post.url, width=width, height=height)], title=post.title, content=post.caption
                 )
             case "GraphVideo":
-                result = VideoParseResult(
+                return VideoParseResult(
                     video=VideoRef(
                         url=post.video_url or post.url,
                         thumb_url=post.url,
@@ -61,9 +57,7 @@ class InstagramParser(BaseParser):
                     content=post.caption,
                 )
             case _:
-                raise ParseError("不支持的类型")
-        result.author_handle = owner_handle
-        return result
+                raise ParseError(f"不支持的类型: {post.typename}")
 
     async def _parse(self, url: str, shortcode: str, cookie: dict[str, Any] | None = None) -> MyPost:
         try:

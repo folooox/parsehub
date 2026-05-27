@@ -31,12 +31,9 @@ class DouyinParser(BaseParser):
 
         match result.type:
             case DouyinMediaType.VIDEO:
-                pr = self._build_video_result(result)
+                return self._build_video_result(result)
             case DouyinMediaType.IMAGE:
-                pr = self._build_image_result(result)
-        pr.author = result.author
-        pr.author_handle = result.author_handle
-        return pr
+                return self._build_image_result(result)
 
     async def _fetch_api_result(self, url: str) -> "DouyinApiResult":
         """获取并解析抖音 API 结果"""
@@ -142,8 +139,6 @@ class DouyinApiResult:
     video: VideoRef | None = None
     desc: str = ""
     image_list: list[ImageRef | LivePhotoRef] = field(default_factory=list)
-    author: str | None = None
-    author_handle: str | None = None
 
     @classmethod
     def parse(cls, json_dict: dict) -> Self:
@@ -152,22 +147,13 @@ class DouyinApiResult:
             raise ParseError("抖音解析失败: 未获取到作品详情")
 
         desc = data.get("desc", "")
-        try:
-            aw_author = data.get("author") or {}
-            _author        = (aw_author.get("nickname") or "").strip() or None
-            _author_handle = (aw_author.get("unique_id") or aw_author.get("uniqueId") or "").strip() or None
-        except Exception:
-            _author, _author_handle = None, None
 
         if images := data.get("images"):
-            api_result = cls._parse_images(images, desc)
+            return cls._parse_images(images, desc)
         elif image_post_info := data.get("image_post_info"):
-            api_result = cls._parse_image_post_info(image_post_info, desc)
+            return cls._parse_image_post_info(image_post_info, desc)
         else:
-            api_result = cls._parse_video(data, desc)
-        api_result.author = _author
-        api_result.author_handle = _author_handle
-        return api_result
+            return cls._parse_video(data, desc)
 
     @classmethod
     def _parse_images(cls, images: list[dict], desc: str) -> Self:
