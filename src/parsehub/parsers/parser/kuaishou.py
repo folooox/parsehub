@@ -16,7 +16,7 @@ class KuaiShouParser(BaseParser):
         except Exception as e:
             raise ParseError(f"快手解析失败: {e}") from e
         else:
-            pr = VideoParseResult(
+            return VideoParseResult(
                 title=result.title,
                 video=VideoRef(
                     url=result.video_url,
@@ -26,9 +26,6 @@ class KuaiShouParser(BaseParser):
                     width=result.width,
                 ),
             )
-            pr.author = result.author
-            pr.author_handle = result.author_handle
-            return pr
 
 
 __all__ = ["KuaiShouParser"]

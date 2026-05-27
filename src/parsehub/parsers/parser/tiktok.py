@@ -28,12 +28,9 @@ class TikTokParser(BaseParser):
 
         match result.type:
             case TikTokMediaType.VIDEO:
-                pr = self._build_video_result(result)
+                return self._build_video_result(result)
             case TikTokMediaType.IMAGE:
-                pr = self._build_image_result(result)
-        pr.author = result.author
-        pr.author_handle = result.author_handle
-        return pr
+                return self._build_image_result(result)
 
     async def _fetch_api_result(self, url: str) -> "TikTokApiResult":
         crawler = TikTokWebCrawler(proxy=self.proxy, cookie=self.cookie)
@@ -207,8 +204,6 @@ class TikTokApiResult:
     video: VideoRef | None = None
     desc: str = ""
     image_list: list[ImageRef] = field(default_factory=list)
-    author: str | None = None
-    author_handle: str | None = None
 
     @classmethod
     def parse(cls, json_dict: dict) -> Self:
@@ -216,21 +211,10 @@ class TikTokApiResult:
             raise ParseError("TikTok 解析失败: 未获取到作品详情")
 
         desc = json_dict.get("desc", "")
-        try:
-            tk_author = json_dict.get("author") or {}
-            _author        = (tk_author.get("nickname") or "").strip() or None
-            _author_handle = (tk_author.get("uniqueId") or tk_author.get("unique_id") or "").strip() or None
-        except Exception:
-            _author, _author_handle = None, None
-
         image_post_info: dict = json_dict.get("image_post_info", {}) or json_dict.get("imagePost", {})
         if image_post_info:
-            api_result = cls._parse_image_post(image_post_info, desc)
-        else:
-            api_result = cls._parse_video(json_dict, desc)
-        api_result.author = _author
-        api_result.author_handle = _author_handle
-        return api_result
+            return cls._parse_image_post(image_post_info, desc)
+        return cls._parse_video(json_dict, desc)
 
     @classmethod
     def _parse_image_post(cls, image_post_info: dict, desc: str) -> Self:

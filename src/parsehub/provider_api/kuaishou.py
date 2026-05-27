@@ -139,8 +139,6 @@ class KuaiShouVideo:
     duration: int
     height: int
     width: int
-    author: str | None = None
-    author_handle: str | None = None
 
     @classmethod
     def parse(cls, data: dict) -> "KuaiShouVideo":
@@ -149,12 +147,6 @@ class KuaiShouVideo:
         if not photo:
             raise Exception("-2 账号风控")
         vi = cls._get_video(photo)
-        try:
-            ks_author = vision_video_detail.get("author") or {}
-            author_name = (ks_author.get("name") or "").strip() or None
-            author_id   = str(ks_author.get("id") or "").strip() or None
-        except Exception:
-            author_name, author_id = None, None
         return cls(
             title=photo.get("caption"),
             video_url=vi["url"],
@@ -162,8 +154,6 @@ class KuaiShouVideo:
             duration=vi["duration"],
             height=vi["height"],
             width=vi["width"],
-            author=author_name,
-            author_handle=author_id,
         )
 
     @staticmethod

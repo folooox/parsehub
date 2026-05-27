@@ -82,18 +82,6 @@ class Twitter:
         if not result:
             raise ParseError("error -4: 帖子或用户不存在")
 
-        try:
-            user_legacy = (
-                (result.get("core") or {})
-                .get("user_results", {})
-                .get("result", {})
-                .get("legacy", {})
-            ) or {}
-            _tw_author        = (user_legacy.get("name") or "").strip() or None
-            _tw_author_handle = (user_legacy.get("screen_name") or "").strip() or None
-        except Exception:
-            _tw_author, _tw_author_handle = None, None
-
         if tweet := result.get("tweet"):
             tweet_id = tweet.get("rest_id", {})
             legacy: dict | None = tweet.get("legacy")
@@ -108,7 +96,7 @@ class Twitter:
 
         if article := result.get("article", {}):
             ta = ArticleRenderer(article["article_results"]["result"]).render()
-            return TwitterTweet(tweet_id=tweet_id, article=ta, author=_tw_author, author_handle=_tw_author_handle)
+            return TwitterTweet(tweet_id=tweet_id, article=ta)
 
         if note_tweet := result.get("note_tweet"):
             full_text = note_tweet.get("note_tweet_results", {}).get("result", {}).get("text", None)
@@ -156,7 +144,7 @@ class Twitter:
                         )
                     )
 
-        return TwitterTweet(tweet_id=tweet_id, full_text=full_text, media=media_list or None, author=_tw_author, author_handle=_tw_author_handle)
+        return TwitterTweet(tweet_id=tweet_id, full_text=full_text, media=media_list or None)
 
     @staticmethod
     def _build_img_url(url: str, size: Literal["orig", "large", "medium", "small", "thumb"]):
@@ -198,15 +186,11 @@ class TwitterTweet:
         full_text: str | None = None,
         media: list[TwitterVideo | TwitterPhoto | TwitterAni] | None = None,
         article: TwitterArticle | None = None,
-        author: str | None = None,
-        author_handle: str | None = None,
     ):
         self.tweet_id = tweet_id
         self.full_text = re.sub(r"https://t\.co/[^\s,]+$", "", full_text or "") if media else full_text
         self.media = media
         self.article = article
-        self.author = author
-        self.author_handle = author_handle
 
 
 @dataclass
