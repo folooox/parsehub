@@ -22,13 +22,22 @@ class WeiboParser(BaseParser):
     async def _do_parse(self, raw_url: str) -> MultimediaParseResult | VideoParseResult | ImageParseResult:
         weibo = await WeiboAPI(self.proxy).parse(raw_url)
         data = weibo.data
+        try:
+            wb_user = getattr(data, "user", None) or {}
+            if isinstance(wb_user, dict):
+                wb_author        = (wb_user.get("screen_name") or wb_user.get("name") or "").strip() or None
+                wb_author_handle = None  # 微博 uid 不作 handle 展示
+            else:
+                wb_author = wb_author_handle = None
+        except Exception:
+            wb_author = wb_author_handle = None
         text = self.f_text(data.content)
         media: list[VideoRef | ImageRef | LivePhotoRef | AniRef] = []
 
         if not data.pic_infos and data.page_info and data.page_info.object_type == MediaType.VIDEO:
             playback = data.page_info.media_info and data.page_info.media_info.playback
             if playback:
-                return VideoParseResult(
+                vr = VideoParseResult(
                     content=text,
                     video=VideoRef(
                         url=playback.url,
@@ -38,6 +47,8 @@ class WeiboParser(BaseParser):
                         duration=int(playback.duration),
                     ),
                 )
+                vr.author = wb_author
+                return vr
 
         media_info: list[PicInfo | MixMediaInfoItem] | None = None
         if data.retweeted_status and data.retweeted_status.pic_infos:
@@ -47,7 +58,9 @@ class WeiboParser(BaseParser):
         elif data.mix_media_info and data.mix_media_info.items:
             media_info = list(data.mix_media_info.items)
         if not media_info:
-            return MultimediaParseResult(content=text, media=[])
+            mr = MultimediaParseResult(content=text, media=[])
+            mr.author = wb_author
+            return mr
 
         for i in media_info:
             match i.type:
@@ -81,8 +94,11 @@ class WeiboParser(BaseParser):
                         media.append(ImageRef(url=i.media_url, thumb_url=i.thumb_url, width=i.width, height=i.height))
         if all((isinstance(m, ImageRef) or isinstance(m, LivePhotoRef)) for m in media):
             photos = [m for m in media if isinstance(m, ImageRef | LivePhotoRef)]
-            return ImageParseResult(content=text, photo=photos)
-        return MultimediaParseResult(content=text, media=media)
+            final_result: ImageParseResult | MultimediaParseResult = ImageParseResult(content=text, photo=photos)
+        else:
+            final_result = MultimediaParseResult(content=text, media=media)
+        final_result.author = wb_author
+        return final_result
 
     def f_text(self, text: str | None) -> str:
         # text = re.sub(r'<a  href="https://video.weibo.com.*?>.*的微博视频.*</a>', "", text)

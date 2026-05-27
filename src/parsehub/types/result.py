@@ -46,6 +46,8 @@ class ParseResult(ABC):  # noqa: B024
         self.content = (content or "").strip()
         self.media = media
         self.platform = platform
+        self.author: str | None = None
+        self.author_handle: str | None = None
 
     def __repr__(self) -> str:
         media_items = self.media if isinstance(self.media, Sequence) else [self.media]

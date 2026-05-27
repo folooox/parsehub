@@ -24,11 +24,17 @@ class InstagramParser(BaseParser):
         post = await self._parse(raw_url, shortcode)
 
         try:
+            owner_handle: str | None = getattr(post, "owner_username", None) or None
+        except Exception:
+            owner_handle = None
+
+        try:
             dimensions: dict = post._field("dimensions")
         except KeyError:
             dimensions = {}
         width, height = dimensions.get("width", 0) or 0, dimensions.get("height", 0) or 0
 
+        result: VideoParseResult | ImageParseResult | MultimediaParseResult
         match post.typename:
             case "GraphSidecar":
                 media = [
@@ -37,13 +43,13 @@ class InstagramParser(BaseParser):
                     else ImageRef(url=i.display_url, width=i.width, height=i.height)
                     for i in post.get_sidecar_nodes()
                 ]
-                return MultimediaParseResult(media=media, title=post.title, content=post.caption)
+                result = MultimediaParseResult(media=media, title=post.title, content=post.caption)
             case "GraphImage":
-                return ImageParseResult(
+                result = ImageParseResult(
                     photo=[ImageRef(url=post.url, width=width, height=height)], title=post.title, content=post.caption
                 )
             case "GraphVideo":
-                return VideoParseResult(
+                result = VideoParseResult(
                     video=VideoRef(
                         url=post.video_url or post.url,
                         thumb_url=post.url,
@@ -56,6 +62,8 @@ class InstagramParser(BaseParser):
                 )
             case _:
                 raise ParseError("不支持的类型")
+        result.author_handle = owner_handle
+        return result
 
     async def _parse(self, url: str, shortcode: str, cookie: dict[str, Any] | None = None) -> MyPost:
         try:

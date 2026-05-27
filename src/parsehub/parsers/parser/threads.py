@@ -9,6 +9,10 @@ class ThreadsParser(BaseParser):
     __match__ = r"^(http(s)?://)?.+threads.com/@[\w.]+/post/.*"
 
     async def _do_parse(self, raw_url: str) -> "MultimediaParseResult":
+        try:
+            threads_handle = ThreadsAPI.get_username_by_url(raw_url)  # returns "@username"
+        except Exception:
+            threads_handle = None
         post = await ThreadsAPI(proxy=self.proxy).parse(raw_url)
         media: list[AnyMediaRef] = []
         if post.media:
@@ -19,7 +23,9 @@ class ThreadsParser(BaseParser):
                         media.append(VideoRef(url=m.url, thumb_url=m.thumb_url, width=m.width, height=m.height))
                     case ThreadsMediaType.IMAGE:
                         media.append(ImageRef(url=m.url, thumb_url=m.url, width=m.width, height=m.height))
-        return MultimediaParseResult(content=post.content, media=media)
+        result = MultimediaParseResult(content=post.content, media=media)
+        result.author_handle = threads_handle
+        return result
 
 
 __all__ = ["ThreadsParser"]
