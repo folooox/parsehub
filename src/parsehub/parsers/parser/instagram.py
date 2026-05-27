@@ -29,7 +29,9 @@ class InstagramParser(BaseParser):
             dimensions = {}
         width, height = dimensions.get("width", 0) or 0, dimensions.get("height", 0) or 0
 
-        match post.typename:
+        # Instagram now returns "XDT"-prefixed typenames for newer posts
+        typename = post.typename.removeprefix("XDT")
+        match typename:
             case "GraphSidecar":
                 media = [
                     VideoRef(url=i.video_url, thumb_url=i.display_url, width=i.width, height=i.height)
@@ -55,7 +57,7 @@ class InstagramParser(BaseParser):
                     content=post.caption,
                 )
             case _:
-                raise ParseError("不支持的类型")
+                raise ParseError(f"不支持的类型: {post.typename}")
 
     async def _parse(self, url: str, shortcode: str, cookie: dict[str, Any] | None = None) -> MyPost:
         try:
