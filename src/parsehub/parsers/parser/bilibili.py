@@ -126,7 +126,12 @@ class BiliParse(YtParser):
 
         durl = video_playurl["data"]["durl"][0]
         video_url = self.change_source(durl["backup_url"][0]) if durl.get("backup_url") else durl["url"]
-        return BiliVideoParseResult(
+        try:
+            owner = data["View"].get("owner") or {}
+            bili_up_name = (owner.get("name") or "").strip() or None
+        except Exception:
+            bili_up_name = None
+        result = BiliVideoParseResult(
             title=data["View"]["title"],
             content=f"P{p}: {part}" if part else "",
             video=VideoRef(
@@ -137,6 +142,8 @@ class BiliParse(YtParser):
                 height=dimension.get("height", 0),
             ),
         )
+        result.author = bili_up_name
+        return result
 
     async def ytp_parse(self, url: str) -> YtVideoParseResult:
         result = cast(YtVideoParseResult, await super()._do_parse(url))

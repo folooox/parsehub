@@ -44,7 +44,17 @@ class XHSAPI:
 
         title = note["title"]
         desc = note["desc"]
-        return XHSPost(type=self.__get_post_type(note), title=title, desc=desc, media=self.__parse_media(note))
+        user = note.get("user") or {}
+        author_name = (user.get("nickname") or user.get("name") or "").strip() or None
+        author_handle = (user.get("redId") or "").strip() or None
+        return XHSPost(
+            type=self.__get_post_type(note),
+            title=title,
+            desc=desc,
+            media=self.__parse_media(note),
+            author=author_name,
+            author_handle=author_handle,
+        )
 
     @staticmethod
     def __get_post_type(note: dict[str, Any]) -> XHSPostType:
@@ -149,6 +159,8 @@ class XHSPost:
     title: str
     desc: str
     media: list[XHSMedia] | None = None
+    author: str | None = None
+    author_handle: str | None = None
 
 
 if __name__ == "__main__":
